@@ -70,7 +70,6 @@ kirn/
 └── kirn/
     ├── config.py            ← model, theme, system prompt
     ├── platform.py          ← OS detection (Linux / Android)
-    ├── agent.py             ← standalone chatbot mode
     ├── themes/
     │   ├── base.py          ← Theme base class
     │   └── interstellar.py  ← default theme 🌌

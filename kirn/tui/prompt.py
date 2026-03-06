@@ -10,7 +10,7 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.completion import Completer, Completion, PathCompleter
+from prompt_toolkit.completion import Completer, PathCompleter
 
 from kirn.config import MODEL, SYSTEM_PROMPT, THEME
 from kirn.platform import ON_ANDROID
