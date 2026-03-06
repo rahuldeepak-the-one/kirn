@@ -59,6 +59,10 @@ pipx install .   # installs 'kirn' globally in an isolated environment
 
 # 4. Run it!
 kirn
+
+# 5. Linux Desktop Launcher (Optional)
+# This adds Kirn to your application menu with the official logo
+./install_desktop.sh
 ```
 
 ## 📁 Project Structure
