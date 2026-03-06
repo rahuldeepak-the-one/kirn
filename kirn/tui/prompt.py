@@ -129,7 +129,7 @@ def _ai_explain_error(command: str, output: str, exit_code: int, messages: list)
     prompt = (
         f"The shell command `{command}` failed with exit code {exit_code}.\n"
         f"Output:\n{output.strip()}\n\n"
-        "Briefly explain what went wrong and how to fix it."
+        "Explain what went wrong in a single, short sentence. If it's a typo, suggest the correct command (e.g. 'Command not found, did you mean `pwd`?'). Be extremely concise."
     )
     print(theme.error_explain_header())
     messages_copy = messages + [{"role": "user", "content": prompt}]
