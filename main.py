@@ -1,6 +1,6 @@
-"""Kirn — entry point. All logic lives in the kirn/ package."""
+"""Kirn — entry point."""
 
-from kirn.agent import run_assistant
+from kirn.tui.prompt import run_terminal
 
 if __name__ == "__main__":
-    run_assistant()
+    run_terminal()
