@@ -1,9 +1,12 @@
-"""kirn/config.py — Model selection and system prompt."""
+"""kirn/config.py — Model selection, theme, and system prompt."""
 
 # Swap this line to change the model
 # MODEL = "qwen2.5:0.5b"   # smallest, fastest
 # MODEL = "qwen2.5:1.5b"   # good balance
 MODEL = "llama3.2:3b"       # best tool-calling
+
+# Theme — add new themes in kirn/themes/
+THEME = "interstellar"
 
 SYSTEM_PROMPT = (
     "You are Kirn, a sharp and capable offline AI assistant running on the user's device. "

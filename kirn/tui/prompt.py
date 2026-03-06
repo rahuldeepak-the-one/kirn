@@ -12,23 +12,17 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.completion import Completer, Completion, PathCompleter
 
-from kirn.config import MODEL, SYSTEM_PROMPT
+from kirn.config import MODEL, SYSTEM_PROMPT, THEME
 from kirn.platform import ON_ANDROID
 from kirn.tools import TOOLS, TOOL_HANDLERS
+from kirn.themes import get_theme
 from kirn.tui.mode import detect_mode
 from kirn.tui.shell import run_shell_command, resolve_cd
-from kirn.tui import theme
 
 
-# ─── Prompt style ─────────────────────────────────────────────────────────────
+# ─── Load active theme ────────────────────────────────────────────────────────
 
-KIRN_STYLE = Style.from_dict({
-    "prompt":       "#00d7ff bold",      # cyan
-    "path":         "#6272a4",           # blue-grey
-    "separator":    "#bd93f9",           # violet
-    "completion-menu":               "bg:#282a36 #f8f8f2",
-    "completion-menu.completion.current": "bg:#44475a #50fa7b bold",
-})
+theme = get_theme(THEME)
 
 
 def _make_prompt(cwd: str) -> HTML:
@@ -158,13 +152,21 @@ def run_terminal() -> None:
     device = "Android/Termux" if ON_ANDROID else "Linux"
     print(theme.banner(MODEL, device))
 
+    # Build prompt_toolkit style from theme
+    style_dict = {
+        "prompt":       "#4fc3f7 bold",
+        "path":         "#546e7a",
+    }
+    style_dict.update(theme.prompt_style)
+    kirn_style = Style.from_dict(style_dict)
+
     history_file = os.path.expanduser("~/.kirn_history")
     session: PromptSession = PromptSession(
         history=FileHistory(history_file),
         auto_suggest=AutoSuggestFromHistory(),
         completer=KirnCompleter(),
         complete_while_typing=False,
-        style=KIRN_STYLE,
+        style=kirn_style,
     )
 
     cwd = os.getcwd()
@@ -195,7 +197,6 @@ def run_terminal() -> None:
             _ai_tool(user_input, messages)
 
         else:
-            # Real shell command
             new_cwd = resolve_cd(user_input, cwd)
             if new_cwd is not None:
                 cwd = new_cwd
