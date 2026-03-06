@@ -20,6 +20,7 @@ COLORS = {
     "dim":          "#78909c",    # asteroid grey — dimmed text
     "text":         "#eceff1",    # starlight white — normal text
     "subtle":       "#546e7a",    # deep space — subtle elements
+    "bg_dark":      "#0a0e17",    # the void — terminal background
 }
 
 # ─── prompt_toolkit style overrides ───────────────────────────────────────────

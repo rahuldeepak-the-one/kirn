@@ -55,7 +55,13 @@ class Theme:
 
     def banner(self, model: str, device: str) -> str:
         bar = f"{self.PRIMARY}{_BOLD}{'━' * 50}{_RESET}"
-        return f"""
+        
+        # Change terminal background if theme specifies one
+        bg_cmd = ""
+        if "bg_dark" in self.colors:
+            bg_cmd = f"\033]11;{self.colors['bg_dark']}\007"
+
+        return f"""{bg_cmd}
 {bar}
 {self.PRIMARY}{_BOLD}  ⚡ K I R N{_RESET}{self.DIM}  ·  AI-Integrated Terminal{_RESET}
 {self.DIM}  theme  {_RESET}{self.TEXT}{self.name}{_RESET}
