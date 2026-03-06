@@ -15,6 +15,14 @@ _NATURAL_LANGUAGE_WORDS = frozenset([
     "does", "do", "will", "would", "show", "give", "list",
 ])
 
+# Standalone greetings / conversational words — should go to AI, not shell
+_GREETINGS = frozenset([
+    "hi", "hello", "hey", "yo", "sup", "howdy", "hiya",
+    "thanks", "thank", "thankyou", "cheers",
+    "bye", "goodbye", "cya", "later",
+    "good", "morning", "evening", "night", "afternoon",
+])
+
 
 def detect_mode(text: str) -> str:
     """
@@ -33,9 +41,13 @@ def detect_mode(text: str) -> str:
     if _TOOL_PATTERNS.match(stripped):
         return "ai_tool"
 
-    # Starts with a natural-language word → treat as AI query
-    first_word = stripped.split()[0].lower().rstrip("?!.,") if stripped else ""
-    if first_word in _NATURAL_LANGUAGE_WORDS:
+    # All words are greetings/conversational → AI query, not shell
+    words = [w.lower().rstrip("?!.,") for w in stripped.split()]
+    if words and all(w in _GREETINGS for w in words):
+        return "ai_query"
+
+    # Starts with a natural-language interrogative → AI query
+    if words and words[0] in _NATURAL_LANGUAGE_WORDS:
         return "ai_query"
 
     # Default: real shell command
