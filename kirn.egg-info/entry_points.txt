@@ -1,0 +1,2 @@
+[console_scripts]
+kirn = kirn.cli:main

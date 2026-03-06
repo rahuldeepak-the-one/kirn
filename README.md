@@ -52,11 +52,13 @@ curl -fsSL https://ollama.ai/install.sh | sh
 # 2. Pull a model
 ollama pull llama3.2:3b
 
-# 3. Clone & run
+# 3. Clone & install
 git clone https://github.com/rahuldeepak-the-one/kirn.git
 cd kirn
-pip install -r requirements.txt
-python main.py
+pipx install .   # installs 'kirn' globally in an isolated environment
+
+# 4. Run it!
+kirn
 ```
 
 ## 📁 Project Structure
@@ -116,8 +118,10 @@ MODEL = "qwen2.5-coder:7b"
 pkg install python ollama
 ollama serve &
 ollama pull llama3.2:3b
-pip install -r requirements.txt
-python main.py
+git clone https://github.com/rahuldeepak-the-one/kirn.git
+cd kirn
+pip install .
+kirn
 ```
 
 ## 🛠️ Adding Tools

@@ -10,8 +10,8 @@ HELP_TEXT = """
 ╚══════════════════════════════════════════════════════╝
 
 USAGE
-  python main.py            Start the Kirn terminal
-  python main.py -h         Show this help
+  kirn                      Start the Kirn terminal
+  kirn -h                   Show this help
 
 MODES  (Kirn auto-detects which one to use)
   Shell commands            Anything that looks like a real command
