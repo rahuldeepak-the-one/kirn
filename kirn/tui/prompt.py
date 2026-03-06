@@ -10,6 +10,7 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.completion import Completer, Completion, PathCompleter
 
 from kirn.config import MODEL, SYSTEM_PROMPT
 from kirn.platform import ON_ANDROID
@@ -35,6 +36,36 @@ def _make_prompt(cwd: str) -> HTML:
         f'<path>{short_cwd}</path> '
         f'<prompt>kirn ❯</prompt> '
     )
+
+
+# ─── Tab completer ────────────────────────────────────────────────────────────
+
+class KirnCompleter(Completer):
+    """
+    Tab completer that provides filesystem path completion for any command.
+    Works by extracting the last token of the current input and delegating
+    to prompt_toolkit's built-in PathCompleter.
+    """
+    def __init__(self):
+        self._path_completer = PathCompleter(expanduser=True)
+
+    def get_completions(self, document, complete_event):
+        # Get the text before the cursor on the current line
+        text = document.text_before_cursor
+        # Find the start of the current token (last space boundary)
+        tokens = text.split()
+        if not tokens:
+            return
+        # Only complete if there's at least one word typed (the command)
+        # and the text ends with the partial path token (or a space after a word)
+        if text.endswith(" ") or len(tokens) >= 2:
+            # The partial path is either empty (after a space) or the last token
+            partial = "" if text.endswith(" ") else tokens[-1]
+            # Build a sub-document with just the partial path token
+            from prompt_toolkit.document import Document
+            sub_doc = Document(partial)
+            for completion in self._path_completer.get_completions(sub_doc, complete_event):
+                yield completion
 
 
 # ─── AI helpers ───────────────────────────────────────────────────────────────
@@ -145,6 +176,8 @@ def run_terminal() -> None:
     session: PromptSession = PromptSession(
         history=FileHistory(history_file),
         auto_suggest=AutoSuggestFromHistory(),
+        completer=KirnCompleter(),
+        complete_while_typing=False,   # only show completions on Tab
         style=KIRN_STYLE,
     )
 
