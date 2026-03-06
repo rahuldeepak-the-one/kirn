@@ -17,16 +17,17 @@ from kirn.platform import ON_ANDROID
 from kirn.tools import TOOLS, TOOL_HANDLERS
 from kirn.tui.mode import detect_mode
 from kirn.tui.shell import run_shell_command, resolve_cd
+from kirn.tui import theme
 
 
-# ─── Prompt style (Warp-like) ─────────────────────────────────────────────────
+# ─── Prompt style ─────────────────────────────────────────────────────────────
 
 KIRN_STYLE = Style.from_dict({
     "prompt":       "#00d7ff bold",      # cyan
-    "path":         "#888888",           # dim grey
-    "at":           "#555555",
-    "error":        "#ff5555 bold",
-    "ai":           "#a8ff78",           # green
+    "path":         "#6272a4",           # blue-grey
+    "separator":    "#bd93f9",           # violet
+    "completion-menu":               "bg:#282a36 #f8f8f2",
+    "completion-menu.completion.current": "bg:#44475a #50fa7b bold",
 })
 
 
@@ -41,27 +42,17 @@ def _make_prompt(cwd: str) -> HTML:
 # ─── Tab completer ────────────────────────────────────────────────────────────
 
 class KirnCompleter(Completer):
-    """
-    Tab completer that provides filesystem path completion for any command.
-    Works by extracting the last token of the current input and delegating
-    to prompt_toolkit's built-in PathCompleter.
-    """
+    """Path completion triggered on Tab."""
     def __init__(self):
         self._path_completer = PathCompleter(expanduser=True)
 
     def get_completions(self, document, complete_event):
-        # Get the text before the cursor on the current line
         text = document.text_before_cursor
-        # Find the start of the current token (last space boundary)
         tokens = text.split()
         if not tokens:
             return
-        # Only complete if there's at least one word typed (the command)
-        # and the text ends with the partial path token (or a space after a word)
         if text.endswith(" ") or len(tokens) >= 2:
-            # The partial path is either empty (after a space) or the last token
             partial = "" if text.endswith(" ") else tokens[-1]
-            # Build a sub-document with just the partial path token
             from prompt_toolkit.document import Document
             sub_doc = Document(partial)
             for completion in self._path_completer.get_completions(sub_doc, complete_event):
@@ -72,7 +63,6 @@ class KirnCompleter(Completer):
 
 def _ai_query(question: str, messages: list) -> None:
     """Send a plain question to the LLM and print the answer."""
-    # Strip leading ? if present
     clean = question.lstrip("?").strip()
     messages.append({"role": "user", "content": clean})
     t0 = time.time()
@@ -84,11 +74,11 @@ def _ai_query(question: str, messages: list) -> None:
         elapsed = time.time() - t0
         reply = response["message"].get("content", "")
         messages.append(response["message"])
-        print(f"\n🤖 {reply}")
-        print(f"   [⏱️  {elapsed:.2f}s]\n")
+        print(theme.ai_reply(reply))
+        print(theme.ai_timing(elapsed))
     except Exception as e:
         messages.pop()
-        print(f"\n❌ AI error: {e}\n")
+        print(theme.ai_error(str(e)))
 
 
 def _ai_tool(user_input: str, messages: list) -> None:
@@ -103,7 +93,7 @@ def _ai_tool(user_input: str, messages: list) -> None:
         )
     except Exception as e:
         messages.pop()
-        print(f"\n❌ AI error: {e}\n")
+        print(theme.ai_error(str(e)))
         return
 
     elapsed = time.time() - t0
@@ -114,27 +104,30 @@ def _ai_tool(user_input: str, messages: list) -> None:
         for tc in msg["tool_calls"]:
             func_name = tc["function"]["name"]
             func_args = tc["function"]["arguments"]
-            print(f"\n⚙️  {func_name}({json.dumps(func_args)})")
+            print(theme.tool_call(func_name, json.dumps(func_args)))
             handler = TOOL_HANDLERS.get(func_name)
             result = handler(func_args) if handler else f"Unknown tool: {func_name}"
-            print(f"   → {result}")
+            print(theme.tool_result(result))
             messages.append({"role": "tool", "content": result})
 
         # Follow-up
         try:
+            t1 = time.time()
             fu = ollama.chat(
                 model=MODEL,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
             )
+            elapsed_fu = time.time() - t1
             fu_msg = fu["message"]
             messages.append(fu_msg)
             if fu_msg.get("content"):
-                print(f"\n🤖 {fu_msg['content']}\n")
+                print(theme.ai_reply(fu_msg["content"]))
+                print(theme.ai_timing_dual(elapsed, elapsed_fu))
         except Exception:
             pass
     elif msg.get("content"):
-        print(f"\n🤖 {msg['content']}")
-        print(f"   [⏱️  {elapsed:.2f}s]\n")
+        print(theme.ai_reply(msg["content"]))
+        print(theme.ai_timing(elapsed))
 
 
 def _ai_explain_error(command: str, output: str, exit_code: int, messages: list) -> None:
@@ -144,7 +137,7 @@ def _ai_explain_error(command: str, output: str, exit_code: int, messages: list)
         f"Output:\n{output.strip()}\n\n"
         "Briefly explain what went wrong and how to fix it."
     )
-    print("\n🤖 Kirn is explaining the error...\n")
+    print(theme.error_explain_header())
     messages_copy = messages + [{"role": "user", "content": prompt}]
     try:
         response = ollama.chat(
@@ -152,37 +145,30 @@ def _ai_explain_error(command: str, output: str, exit_code: int, messages: list)
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages_copy,
         )
         reply = response["message"].get("content", "")
-        print(f"🤖 {reply}\n")
+        print(theme.ai_reply(reply))
+        print()
     except Exception as e:
-        print(f"   (AI unavailable: {e})\n")
+        print(theme.dim(f"   (AI unavailable: {e})") + "\n")
 
 
 # ─── Main loop ────────────────────────────────────────────────────────────────
 
 def run_terminal() -> None:
     """Main Kirn terminal loop."""
-    print("═" * 48)
-    print("  ⚡ KIRN — AI Terminal")
-    print(f"  Model : {MODEL}")
-    print(f"  Device: {'Android/Termux' if ON_ANDROID else 'Linux'}")
-    print("  ? <question>  →  ask AI")
-    print("  open/call <x>  →  AI action")
-    print("  everything else  →  real shell")
-    print("  Ctrl+C / exit  →  quit")
-    print("═" * 48)
-    print()
+    device = "Android/Termux" if ON_ANDROID else "Linux"
+    print(theme.banner(MODEL, device))
 
     history_file = os.path.expanduser("~/.kirn_history")
     session: PromptSession = PromptSession(
         history=FileHistory(history_file),
         auto_suggest=AutoSuggestFromHistory(),
         completer=KirnCompleter(),
-        complete_while_typing=False,   # only show completions on Tab
+        complete_while_typing=False,
         style=KIRN_STYLE,
     )
 
     cwd = os.getcwd()
-    messages: list[dict] = []   # AI conversation context
+    messages: list[dict] = []
 
     while True:
         try:
@@ -191,13 +177,13 @@ def run_terminal() -> None:
             print()
             continue
         except EOFError:
-            print("\nBye! 👋")
+            print("\n" + theme.bye())
             break
 
         if not user_input:
             continue
         if user_input.lower() in ("exit", "quit"):
-            print("Bye! 👋")
+            print(theme.bye())
             break
 
         mode = detect_mode(user_input)
@@ -210,7 +196,6 @@ def run_terminal() -> None:
 
         else:
             # Real shell command
-            # Handle cd specially (can't change cwd in a subprocess)
             new_cwd = resolve_cd(user_input, cwd)
             if new_cwd is not None:
                 cwd = new_cwd
