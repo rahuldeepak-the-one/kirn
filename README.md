@@ -33,13 +33,14 @@ Kirn is a terminal that understands you. Type shell commands normally — but wh
 
 - **Real Shell** — Not a chatbot. A full terminal with bash underneath
 - **AI Inline** — Prefix `?` to ask anything, get instant answers
+- **Interactive Apps** — Full PTY support. `vim`, `htop`, and `ssh` work perfectly inside Kirn.
 - **Smart Routing** — Kirn auto-detects if input is a command, question, or action
 - **Auto Error Explain** — When a command fails, AI explains why and how to fix it
 - **Tool Calling** — `open <app>`, `call <number>`, run commands through AI
 - **Dynamic App Discovery** — Opens any installed app without hardcoded lists
 - **Tab Completion** — Filesystem path completion, just like a real terminal
 - **Command History** — Persistent across sessions (`~/.kirn_history`)
-- **Swappable Themes** — Custom color themes in `kirn/themes/`
+- **Swappable Themes** — Custom color themes in `kirn/themes/`. Native terminal background changes to match!
 - **Offline** — Runs 100% locally via [Ollama](https://ollama.ai)
 - **Cross-Platform** — Linux desktop + Android via Termux
 
@@ -49,18 +50,22 @@ Kirn is a terminal that understands you. Type shell commands normally — but wh
 # 1. Install Ollama (https://ollama.ai)
 curl -fsSL https://ollama.ai/install.sh | sh
 
-# 2. Pull a model
-ollama pull llama3.2:3b
+# 2. Pull the recommended model
+ollama pull qwen2.5-coder:7b
 
-# 3. Clone & install
+# 3. Install pipx (if you don't have it)
+sudo apt install pipx    # Debian/Ubuntu
+# brew install pipx      # macOS
+
+# 4. Clone & install
 git clone https://github.com/rahuldeepak-the-one/kirn.git
 cd kirn
 pipx install .   # installs 'kirn' globally in an isolated environment
 
-# 4. Run it!
+# 5. Run it!
 kirn
 
-# 5. Linux Desktop Launcher (Optional)
+# 6. Linux Desktop Launcher (Optional)
 # This adds Kirn to your application menu with the official logo
 ./install_desktop.sh
 ```
