@@ -25,6 +25,9 @@ def _bg(hex_color: str) -> str:
     return f"\033[48;2;{r};{g};{b}m"
 
 
+VERSION = "0.2.0"
+
+
 class Theme:
     """
     A Kirn terminal theme. Constructed from a COLORS dict.
@@ -54,25 +57,37 @@ class Theme:
     # ─── Styled output ────────────────────────────────────────────────────
 
     def banner(self, model: str, device: str) -> str:
-        bar = f"{self.PRIMARY}{_BOLD}{'━' * 50}{_RESET}"
-        
+        bar = f"{self.PRIMARY}{_BOLD}{'━' * 52}{_RESET}"
+        thin = f"{self.DIM}{'─' * 52}{_RESET}"
+
         # Change terminal background if theme specifies one
         bg_cmd = ""
         if "bg_dark" in self.colors:
             bg_cmd = f"\033]11;{self.colors['bg_dark']}\007"
 
+        logo = f"""\
+{self.PRIMARY}{_BOLD}  ██╗  ██╗ ██╗ ██████╗  ███╗   ██╗{_RESET}
+{self.PRIMARY}{_BOLD}  ██║ ██╔╝ ██║ ██╔══██╗ ████╗  ██║{_RESET}
+{self.ACCENT}{_BOLD}  █████╔╝  ██║ ██████╔╝ ██╔██╗ ██║{_RESET}
+{self.ACCENT}{_BOLD}  ██╔═██╗  ██║ ██╔══██╗ ██║╚██╗██║{_RESET}
+{self.PRIMARY}{_BOLD}  ██║  ██╗ ██║ ██║  ██║ ██║ ╚████║{_RESET}
+{self.DIM}  ╚═╝  ╚═╝ ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═══╝{_RESET}"""
+
         return f"""{bg_cmd}
 {bar}
-{self.PRIMARY}{_BOLD}  ⚡ K I R N{_RESET}{self.DIM}  ·  AI-Integrated Terminal{_RESET}
-{self.DIM}  theme  {_RESET}{self.TEXT}{self.name}{_RESET}
-{bar}
-{self.DIM}  model  {_RESET}{self.TEXT}{model}{_RESET}
-{self.DIM}  device {_RESET}{self.TEXT}{device}{_RESET}
-{self.DIM}  ─────────────────────────────────────{_RESET}
-{self.ACCENT}  ?{self.DIM} <question>     {self.TEXT}ask AI{_RESET}
-{self.TOOL}  open{self.DIM}/<{self.TOOL}call{self.DIM}> <x>  {self.TEXT}AI action{_RESET}
-{self.PRIMARY}  <command>        {self.TEXT}real shell{_RESET}
-{self.WARNING}  Ctrl+C{self.DIM} / {self.WARNING}exit   {self.TEXT}quit{_RESET}
+{logo}
+{self.DIM}  v{VERSION}{_RESET}{self.TEXT}  ·  AI-Integrated Terminal{_RESET}
+{thin}
+{self.DIM}  model   {_RESET}{self.TEXT}{model}{_RESET}
+{self.DIM}  device  {_RESET}{self.TEXT}{device}{_RESET}
+{self.DIM}  theme   {_RESET}{self.TEXT}{self.name}{_RESET}
+{thin}
+{self.ACCENT}  ?{self.DIM} question       {self.TEXT}ask AI{_RESET}
+{self.SUCCESS}  @kirn{self.DIM} task       {self.TEXT}autonomous execution{_RESET}
+{self.WARNING}  command{self.DIM} desc     {self.TEXT}generate a shell command{_RESET}
+{self.PRIMARY}  <command>          {self.TEXT}real shell{_RESET}
+{self.DIM}  history            {self.TEXT}show command history{_RESET}
+{self.ERROR}  Ctrl+C{self.DIM} / {self.ERROR}exit     {self.TEXT}quit{_RESET}
 {bar}
 """
 
@@ -105,3 +120,25 @@ class Theme:
 
     def bye(self) -> str:
         return f"{self.ACCENT}{_BOLD}Bye! 👋{_RESET}"
+
+    def session_summary(self, duration_s: float, cmds: int, queries: int, tools: int, errors: int) -> str:
+        """Print a styled session stats summary on exit."""
+        mins = int(duration_s // 60)
+        secs = int(duration_s % 60)
+        time_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+        bar = f"{self.DIM}{'─' * 40}{_RESET}"
+        return (
+            f"\n{bar}\n"
+            f"{self.PRIMARY}{_BOLD}  ⬡ Session Summary{_RESET}\n"
+            f"{bar}\n"
+            f"{self.DIM}  ⏱️  Duration      {_RESET}{self.TEXT}{time_str}{_RESET}\n"
+            f"{self.DIM}  ⌨  Shell cmds    {_RESET}{self.TEXT}{cmds}{_RESET}\n"
+            f"{self.DIM}  💬 AI queries    {_RESET}{self.TEXT}{queries}{_RESET}\n"
+            f"{self.DIM}  🔧 Tool actions  {_RESET}{self.TEXT}{tools}{_RESET}\n"
+            f"{self.DIM}  ⚠️  Errors caught  {_RESET}{self.TEXT}{errors}{_RESET}\n"
+            f"{bar}\n"
+        )
+
+    def history_entry(self, index: int, entry: str) -> str:
+        """Format a single history entry."""
+        return f"{self.DIM}  {index:>4}{_RESET}  {self.TEXT}{entry}{_RESET}"
