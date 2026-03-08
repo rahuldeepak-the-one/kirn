@@ -60,7 +60,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_terminal_command",
-            "description": "Run a shell command and return its output. Use when the user provides an explicit command.",
+            "description": "Run a shell command and return its output. Use this to execute ANY command necessary to fulfill the user's request. If a command fails, interpret the error and try again with a corrected command.",
             "parameters": {
                 "type": "object",
                 "properties": {

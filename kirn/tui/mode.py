@@ -27,15 +27,20 @@ _GREETINGS = frozenset([
 def detect_mode(text: str) -> str:
     """
     Returns one of:
-      "ai_query"  — user is asking a natural-language question (prefix: ?)
-      "ai_tool"   — user wants Kirn to perform an action (open, call, etc.)
-      "shell"     — everything else → pass to the underlying shell
+      "ai_query"       — user is asking a natural-language question (prefix: ?)
+      "ai_tool"        — user wants Kirn to perform an action (open, call, etc.)
+      "ai_command_gen" — user wants Kirn to generate a shell command
+      "shell"          — everything else → pass to the underlying shell
     """
     stripped = text.strip()
 
     # Explicit AI prefix
     if stripped.startswith("?"):
         return "ai_query"
+
+    # Command generation prefix
+    if stripped.lower().startswith("command "):
+        return "ai_command_gen"
 
     # Tool action patterns (open X, call X, launch X)
     if _TOOL_PATTERNS.match(stripped):

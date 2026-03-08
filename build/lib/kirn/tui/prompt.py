@@ -75,53 +75,77 @@ def _ai_query(question: str, messages: list) -> None:
         print(theme.ai_error(str(e)))
 
 
-def _ai_tool(user_input: str, messages: list) -> None:
-    """Send a tool-triggering request to the LLM and execute returned tools."""
+def _ai_tool(user_input: str, messages: list, cwd: str) -> None:
+    """Send a tool-triggering request to the LLM and execute returned tools iteratively."""
     messages.append({"role": "user", "content": user_input})
-    t0 = time.time()
-    try:
-        response = ollama.chat(
-            model=MODEL,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
-            tools=TOOLS,
-        )
-    except Exception as e:
-        messages.pop()
-        print(theme.ai_error(str(e)))
-        return
+    t_start = time.time()
+    
+    max_loops = 10
+    loops = 0
+    
+    while loops < max_loops:
+        loops += 1
+        try:
+            response = ollama.chat(
+                model=MODEL,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+                tools=TOOLS,
+            )
+        except Exception as e:
+            if loops == 1:
+                messages.pop()
+            print(theme.ai_error(str(e)))
+            return
 
-    elapsed = time.time() - t0
-    msg = response["message"]
-    messages.append(msg)
+        msg = response["message"]
+        messages.append(msg)
 
-    if msg.get("tool_calls"):
+        if not msg.get("tool_calls"):
+            # Check if LLM outputted raw JSON instead of native tool call
+            content = msg.get("content", "").strip()
+            if content.startswith("```json") and content.endswith("```"):
+                import re
+                try:
+                    raw_json = re.sub(r'```json\n|\n```', '', content)
+                    parsed_tc = json.loads(raw_json)
+                    # If it's a single dict, wrap it
+                    if isinstance(parsed_tc, dict) and "name" in parsed_tc:
+                        msg["tool_calls"] = [{"function": parsed_tc}]
+                except Exception:
+                    pass
+            elif content.startswith("{") and content.endswith("}") and '"name"' in content:
+                try:
+                    parsed_tc = json.loads(content)
+                    if isinstance(parsed_tc, dict) and "name" in parsed_tc:
+                        msg["tool_calls"] = [{"function": parsed_tc}]
+                except Exception:
+                    pass
+
+        if not msg.get("tool_calls"):
+            # No tool calls, the AI is done
+            elapsed = time.time() - t_start
+            if msg.get("content"):
+                print(theme.ai_reply(msg["content"]))
+                print(theme.ai_timing(elapsed))
+            break
+
         for tc in msg["tool_calls"]:
             func_name = tc["function"]["name"]
             func_args = tc["function"]["arguments"]
             print(theme.tool_call(func_name, json.dumps(func_args)))
-            handler = TOOL_HANDLERS.get(func_name)
-            result = handler(func_args) if handler else f"Unknown tool: {func_name}"
+            
+            if func_name == "run_terminal_command":
+                from kirn.tools.terminal import handle_run_command
+                result = handle_run_command(func_args.get("command", ""), cwd=cwd)
+            else:
+                handler = TOOL_HANDLERS.get(func_name)
+                result = handler(func_args) if handler else f"Unknown tool: {func_name}"
+                
             print(theme.tool_result(result))
             messages.append({"role": "tool", "content": result})
 
-        # Follow-up
-        try:
-            t1 = time.time()
-            fu = ollama.chat(
-                model=MODEL,
-                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
-            )
-            elapsed_fu = time.time() - t1
-            fu_msg = fu["message"]
-            messages.append(fu_msg)
-            if fu_msg.get("content"):
-                print(theme.ai_reply(fu_msg["content"]))
-                print(theme.ai_timing_dual(elapsed, elapsed_fu))
-        except Exception:
-            pass
-    elif msg.get("content"):
-        print(theme.ai_reply(msg["content"]))
-        print(theme.ai_timing(elapsed))
+    if loops == max_loops:
+        print(theme.ai_error("Max autonomous iterations reached. Stopping to prevent infinite loop."))
 
 
 def _ai_explain_error(command: str, output: str, exit_code: int, messages: list) -> None:
@@ -196,7 +220,7 @@ def run_terminal() -> None:
             _ai_query(user_input, messages)
 
         elif mode == "ai_tool":
-            _ai_tool(user_input, messages)
+            _ai_tool(user_input, messages, cwd)
 
         else:
             new_cwd = resolve_cd(user_input, cwd)

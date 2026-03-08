@@ -3,13 +3,14 @@
 import subprocess
 
 
-def handle_run_command(command: str) -> str:
+def handle_run_command(command: str, cwd: str = None) -> str:
     """Execute a shell command and return its output."""
     if not command.strip():
         return "No command provided."
     try:
         result = subprocess.run(
             command,
+            cwd=cwd,
             shell=True,
             capture_output=True,
             text=True,
