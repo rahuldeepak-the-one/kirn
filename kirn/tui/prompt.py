@@ -25,10 +25,27 @@ from kirn.tui.shell import run_shell_command, resolve_cd
 theme = get_theme(THEME)
 
 
+def _get_git_branch(cwd: str) -> str:
+    """Fast check for current git branch."""
+    import subprocess
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, timeout=0.1
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            return f"  {res.stdout.strip()}"
+    except Exception:
+        pass
+    return ""
+
 def _make_prompt(cwd: str) -> HTML:
     short_cwd = cwd.replace(os.path.expanduser("~"), "~")
+    branch = _get_git_branch(cwd)
+    branch_html = f'<git>{branch}</git>' if branch else ""
     return HTML(
-        f'<path>{short_cwd}</path> '
+        f'<path>{short_cwd}</path>{branch_html} '
         f'<prompt>kirn ❯</prompt> '
     )
 
@@ -53,6 +70,37 @@ class KirnCompleter(Completer):
                 yield completion
 
 
+import sys
+import threading
+import itertools
+
+# ─── Spinner functionality ────────────────────────────────────────────────────
+
+class Spinner:
+    """A context manager to display an animated spinner in the terminal."""
+    def __init__(self, message="Thinking..."):
+        self.message = theme.dim(message)
+        self.spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+        self.stop_running = threading.Event()
+        self.thread = threading.Thread(target=self.spin)
+
+    def spin(self):
+        while not self.stop_running.is_set():
+            sys.stdout.write(f"\r{self.message} {theme.ACCENT}{next(self.spinner)}{theme.colors.get('text', '')}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+            
+    def __enter__(self):
+        self.stop_running.clear()
+        self.thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop_running.set()
+        self.thread.join()
+        sys.stdout.write('\r\x1b[2K') # Clear the line
+        sys.stdout.flush()
+
 # ─── AI helpers ───────────────────────────────────────────────────────────────
 
 def _ai_query(question: str, messages: list) -> None:
@@ -61,10 +109,11 @@ def _ai_query(question: str, messages: list) -> None:
     messages.append({"role": "user", "content": clean})
     t0 = time.time()
     try:
-        response = ollama.chat(
-            model=MODEL,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
-        )
+        with Spinner("Thinking..."):
+            response = ollama.chat(
+                model=MODEL,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+            )
         elapsed = time.time() - t0
         reply = response["message"].get("content", "")
         messages.append(response["message"])
@@ -86,11 +135,12 @@ def _ai_tool(user_input: str, messages: list, cwd: str) -> None:
     while loops < max_loops:
         loops += 1
         try:
-            response = ollama.chat(
-                model=MODEL,
-                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
-                tools=TOOLS,
-            )
+            with Spinner("Processing tasks..."):
+                response = ollama.chat(
+                    model=MODEL,
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+                    tools=TOOLS,
+                )
         except Exception as e:
             if loops == 1:
                 messages.pop()
@@ -163,10 +213,11 @@ def _ai_explain_error(command: str, output: str, exit_code: int, messages: list)
     print(theme.error_explain_header())
     messages_copy = messages + [{"role": "user", "content": prompt}]
     try:
-        response = ollama.chat(
-            model=MODEL,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages_copy,
-        )
+        with Spinner("Interpreting error..."):
+            response = ollama.chat(
+                model=MODEL,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages_copy,
+            )
         reply = response["message"].get("content", "")
         print(theme.ai_reply(reply))
         print()
@@ -182,10 +233,11 @@ def _ai_command_gen(user_input: str, messages: list) -> None:
     messages_copy = messages + [{"role": "user", "content": prompt}]
     t0 = time.time()
     try:
-        response = ollama.chat(
-            model=MODEL,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages_copy,
-        )
+        with Spinner("Generating command..."):
+            response = ollama.chat(
+                model=MODEL,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages_copy,
+            )
         elapsed = time.time() - t0
         reply = response["message"].get("content", "").strip()
         # Optionally strip markdown codeblocks if the LLM ignores the instruction
@@ -213,6 +265,7 @@ def run_terminal() -> None:
     style_dict = {
         "prompt":       "#4fc3f7 bold",
         "path":         "#546e7a",
+        "git":          "#fbc02d",
     }
     style_dict.update(theme.prompt_style)
     kirn_style = Style.from_dict(style_dict)

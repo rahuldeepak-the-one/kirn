@@ -77,7 +77,7 @@ class Theme:
 """
 
     def ai_reply(self, text: str) -> str:
-        return f"\n{self.SUCCESS}{_BOLD}🤖 {_RESET}{self.TEXT}{text}{_RESET}"
+        return f"\n{self.SUCCESS}{_BOLD}⬡ {_RESET}{self.TEXT}{text}{_RESET}"
 
     def ai_timing(self, seconds: float) -> str:
         return f"{self.DIM}   ⏱️  {seconds:.2f}s{_RESET}\n"
@@ -95,10 +95,10 @@ class Theme:
         return f"\n{self.ERROR}{_BOLD}✗ {text}{_RESET}"
 
     def error_explain_header(self) -> str:
-        return f"\n{self.WARNING}{_BOLD}🤖 Kirn is explaining the error...{_RESET}\n"
+        return f"\n{self.WARNING}{_BOLD}⬡ Kirn is interpreting the error...{_RESET}\n"
 
     def ai_error(self, text: str) -> str:
-        return f"\n{self.ERROR}{_BOLD}❌ AI error:{_RESET} {self.TEXT}{text}{_RESET}\n"
+        return f"\n{self.ERROR}{_BOLD}❌ Kirn System Error:{_RESET} {self.TEXT}{text}{_RESET}\n"
 
     def dim(self, text: str) -> str:
         return f"{self.DIM}{text}{_RESET}"
