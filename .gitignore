@@ -5,3 +5,8 @@ __pycache__/
 venv/
 .venv/
 build/\n*.egg-info/
+finetune/output/
+finetune/merged_model/
+finetune/dataset/
+finetune/train.log
+nohup.out
