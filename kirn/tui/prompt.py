@@ -422,3 +422,9 @@ def run_terminal() -> None:
                 _last_exit_code = exit_code
                 if exit_code != 0:
                     _ai_explain_error(user_input, output, exit_code, messages, stats)
+
+    # Clean up and unload the Ollama model from memory when Kirn exits
+    try:
+        ollama.generate(model=MODEL, prompt="", keep_alive=0)
+    except Exception:
+        pass
