@@ -10,6 +10,7 @@ import json
 from kirn.tools.app import handle_open_app
 from kirn.tools.phone import handle_phone
 from kirn.tools.terminal import handle_run_command
+from kirn.tools.memory import search_memory
 
 
 # ─── Ollama tool schemas ──────────────────────────────────────────────────────
@@ -49,12 +50,29 @@ TOOLS = [
                 "properties": {
                     "phone_number": {
                         "type": "string",
-                        "description": "Phone number to dial (e.g. '+919876543210')",
+                        "description": "Phone number to dial (e.g. '+919876543210')"
                     }
                 },
                 "required": ["phone_number"],
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memory",
+            "description": "Search Kirn's semantic memory log for past commands and solutions. Use this to remember how you solved things previously on this system.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "A search keyword or short phrase (e.g. 'nginx config', 'build project', 'docker')."
+                    }
+                },
+                "required": ["query"]
+            }
+        }
     },
     {
         "type": "function",

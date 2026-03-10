@@ -1,10 +1,12 @@
 """kirn/config.py — Model selection, theme, and system prompt."""
 
+import os # Added this line for os.getenv
+
 # Swap this line to change the model
 # MODEL = "qwen2.5:0.5b"   # smallest, fastest
 # MODEL = "qwen2.5:1.5b"   # good balance
 # MODEL = "llama3.2:3b"    # best tool-calling
-MODEL = 'qwen2.5-coder:3b'     # best tool-calling
+MODEL = os.getenv("KIRN_MODEL", "kirn:0.5b")     # best tool-calling
 
 # Theme — add new themes in kirn/themes/
 THEME = "interstellar"
@@ -22,8 +24,10 @@ SYSTEM_PROMPT = (
     "CRITICAL RULES FOR TERMINAL:\n"
     "1. NEVER use `sudo` or commands that require interactive input (like `nano`, `vim`, or passwords). \n"
     "2. If a command returns 'not found' or a similar error, DO NOT just retry it with sudo. Analyze the command for typos first.\n"
+    "3. If the user asks you to do something complex, or if you aren't sure how to build a project, use `search_memory` to check if you've solved it before on this system.\n"
     "DO NOT use any tool for simple greetings or casual conversation without actionable goals.\n"
     "TOOL USAGE GUIDE:\n"
+    "- search_memory: Use first when asked to perform a complex or system-specific task to see past solutions.\n"
     "- open_app: Use when the user wants to launch an app or open a URL\n"
     "- phone: Use to make phone calls\n"
     "- run_terminal_command: Use to run ANY shell command to accomplish the user's task. If a command fails, read the error output from the result and try again.\n"

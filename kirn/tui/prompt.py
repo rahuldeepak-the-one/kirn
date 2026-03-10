@@ -188,6 +188,8 @@ def _ai_tool(user_input: str, messages: list, cwd: str, stats: SessionStats) -> 
     """Send a tool-triggering request to the LLM and execute returned tools iteratively."""
     messages.append({"role": "user", "content": user_input})
     t_start = time.time()
+    
+    successful_commands = []
 
     max_loops = 10
     loops = 0
@@ -205,6 +207,7 @@ def _ai_tool(user_input: str, messages: list, cwd: str, stats: SessionStats) -> 
             if loops == 1:
                 messages.pop()
             print(theme.ai_error(str(e)))
+            stats.errors_caught += 1
             return
 
         msg = response["message"]
@@ -245,7 +248,9 @@ def _ai_tool(user_input: str, messages: list, cwd: str, stats: SessionStats) -> 
 
             if func_name == "run_terminal_command":
                 from kirn.tools.terminal import handle_run_command
-                result = handle_run_command(func_args.get("command", ""), cwd=cwd)
+                cmd_to_run = func_args.get("command", "")
+                result = handle_run_command(cmd_to_run, cwd=cwd)
+                successful_commands.append(cmd_to_run)
             else:
                 handler = TOOL_HANDLERS.get(func_name)
                 result = handler(func_args) if handler else f"Unknown tool: {func_name}"
@@ -255,6 +260,14 @@ def _ai_tool(user_input: str, messages: list, cwd: str, stats: SessionStats) -> 
 
     if loops == max_loops:
         print(theme.ai_error("Max autonomous iterations reached. Stopping to prevent infinite loop."))
+
+    # Save successful sequences to memory
+    if successful_commands:
+        from kirn.memory import save_memory
+        save_memory(user_goal=user_input, commands_run=successful_commands, outcome="Success", cwd=cwd)
+
+    duration = time.time() - t_start
+    print(theme.ai_timing(duration))
 
 
 def _ai_explain_error(command: str, output: str, exit_code: int, messages: list, stats: SessionStats) -> None:
@@ -422,6 +435,10 @@ def run_terminal() -> None:
                 _last_exit_code = exit_code
                 if exit_code != 0:
                     _ai_explain_error(user_input, output, exit_code, messages, stats)
+                else:
+                    # Auto-save successful manual shell commands too
+                    from kirn.memory import save_memory
+                    save_memory(user_goal=user_input, commands_run=[user_input], outcome="Success", cwd=cwd)
 
     # Clean up and unload the Ollama model from memory when Kirn exits
     try:
